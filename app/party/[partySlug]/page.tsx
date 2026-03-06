@@ -1,6 +1,4 @@
-import Link from "next/link";
-import { BackButton } from "@/components/BackButton";
-import { PartyConstituencyFilters } from "@/components/PartyConstituencyFilters";
+import { PartyPageClient } from "@/components/PartyPageClient";
 import { getElectionData, getRawCacheData, startElectionRefreshScheduler } from "@/lib/dataStore";
 import { filterExcludedDistricts } from "@/lib/districtFilters";
 import { ConstituencyResult } from "@/lib/types";
@@ -72,22 +70,12 @@ export default async function PartyPage({ params }: PartyPageProps): Promise<Rea
   const second = secondByParty.filter((item) => (item.runnerUp?.votes ?? 0) > 0);
 
   return (
-    <main className="slide-wrap">
-      <div className="top-row">
-        <div className="title-block">
-          <div className="election-title">{partyName}</div>
-          <div className="subtitle">Party Constituency Details</div>
-        </div>
-      </div>
-
-      <div className="controls">
-        <BackButton label="Back" fallbackHref="/" />
-        <Link href="/" className="party-back-link">
-          Back to Dashboard
-        </Link>
-      </div>
-
-      <PartyConstituencyFilters leading={leading} won={won} second={second} />
-    </main>
+    <PartyPageClient
+      partySlug={partySlug}
+      initialPartyName={partyName}
+      initialLeading={leading}
+      initialWon={won}
+      initialSecond={second}
+    />
   );
 }
