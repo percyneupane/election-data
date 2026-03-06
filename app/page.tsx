@@ -66,7 +66,7 @@ export default function HomePage(): React.JSX.Element {
   const { language, isReady, hasSelection, setLanguagePreference } = useLanguagePreference();
   const [dataset, setDataset] = useState<ElectionDataset>(fallbackResults);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [autoPlay, setAutoPlay] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
@@ -171,7 +171,7 @@ export default function HomePage(): React.JSX.Element {
   }
 
   if (!currentDistrict) {
-    return <div className="error-state">Error retrieving data. Retrying in the background.</div>;
+    return <div className="loading">Loading election results...</div>;
   }
 
   return (
@@ -197,8 +197,6 @@ export default function HomePage(): React.JSX.Element {
           });
         }}
       />
-
-      {error ? <div className="fallback">API warning: {error}</div> : null}
 
       <div className="ticker" aria-label="Major party lead ticker">
         <div className="ticker-track">{buildTicker(districts, language)}</div>

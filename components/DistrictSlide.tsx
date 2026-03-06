@@ -1297,12 +1297,6 @@ export function DistrictSlide({
         </>
       ) : null}
 
-      {dataset.fallbackUsed || dataset.stale ? (
-        <div className="fallback">
-          Error retrieving data. Displaying the last available snapshot.
-        </div>
-      ) : null}
-
       <CountdownBar elapsedMs={elapsedMs} totalMs={totalMs} />
 
       <div className={`content-layout ${resultView !== "constituency" || normalizedSearch ? "party-no-sidebar" : ""}`}>
