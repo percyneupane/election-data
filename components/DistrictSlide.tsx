@@ -1299,7 +1299,7 @@ export function DistrictSlide({
 
       {dataset.fallbackUsed || dataset.stale ? (
         <div className="fallback">
-          Live scraping delayed. Displaying last available snapshot while scraper retries in background.
+          Error retrieving data. Displaying the last available snapshot.
         </div>
       ) : null}
 

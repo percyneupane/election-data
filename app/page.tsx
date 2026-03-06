@@ -161,7 +161,7 @@ export default function HomePage(): React.JSX.Element {
   }
 
   if (!currentDistrict) {
-    return <div className="error-state">No district data found. Scraper is retrying in the background.</div>;
+    return <div className="error-state">Error retrieving data. Retrying in the background.</div>;
   }
 
   return (

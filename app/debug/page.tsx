@@ -25,7 +25,7 @@ export default function DebugPage(): React.JSX.Element {
       <div style={{ marginBottom: "0.75rem" }}>
         <BackButton label="Back" fallbackHref="/" />
       </div>
-      <h1>Raw Scraped JSON</h1>
+      <h1>Raw Retrieved JSON</h1>
       <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{raw}</pre>
     </main>
   );

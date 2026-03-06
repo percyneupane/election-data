@@ -4,7 +4,7 @@ import { fallbackResults } from "@/data/fallback-results";
 import { scrapeEkantipurElectionData } from "@/lib/scraper/ekantipurScraper";
 import { ElectionDataset } from "@/lib/types";
 
-const CACHE_DIR = path.join(process.cwd(), "data", "cache");
+const CACHE_DIR = process.env.VERCEL ? "/tmp/nepal-election-cache" : path.join(process.cwd(), "data", "cache");
 const CACHE_FILE = path.join(CACHE_DIR, "results-cache.json");
 
 const SCRAPE_INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS ?? "120000");
@@ -48,7 +48,19 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
       const normalized = withStale(scraped);
 
       if (normalized.districts.length > 0) {
-        await writeCache(normalized);
+        try {
+          await writeCache(normalized);
+        } catch (cacheWriteError) {
+          return {
+            ...normalized,
+            scrapeErrors: [
+              ...normalized.scrapeErrors,
+              `Error retrieving data cache. Serving fresh data: ${
+                cacheWriteError instanceof Error ? cacheWriteError.message : String(cacheWriteError)
+              }`
+            ]
+          };
+        }
         return normalized;
       }
 
@@ -56,14 +68,14 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
       if (cached) {
         return {
           ...withStale(cached),
-          scrapeErrors: [...cached.scrapeErrors, "Scrape returned no districts. Using cached dataset."]
+          scrapeErrors: [...cached.scrapeErrors, "Error retrieving data. Using cached dataset."]
         };
       }
 
       return {
         ...fallbackResults,
         fetchedAtIso: new Date().toISOString(),
-        scrapeErrors: [...fallbackResults.scrapeErrors, "Scrape returned no districts. Using fallback."]
+        scrapeErrors: [...fallbackResults.scrapeErrors, "Error retrieving data. Using fallback dataset."]
       };
     } catch (error) {
       const cached = await readCache();
@@ -72,7 +84,7 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
           ...withStale(cached),
           scrapeErrors: [
             ...cached.scrapeErrors,
-            `Scrape failed. Using cached dataset: ${error instanceof Error ? error.message : String(error)}`
+            `Error retrieving data. Using cached dataset: ${error instanceof Error ? error.message : String(error)}`
           ]
         };
       }
@@ -82,7 +94,7 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
         fetchedAtIso: new Date().toISOString(),
         scrapeErrors: [
           ...fallbackResults.scrapeErrors,
-          `Scrape failed. Using fallback dataset: ${error instanceof Error ? error.message : String(error)}`
+          `Error retrieving data. Using fallback dataset: ${error instanceof Error ? error.message : String(error)}`
         ]
       };
     } finally {
@@ -107,7 +119,7 @@ export async function getElectionData(): Promise<ElectionDataset> {
     (district) => district.districtName.trim().toLowerCase() === "federal parliament"
   );
 
-  // If cache is fallback/incomplete, wait for a fresh scrape instead of serving stale mock data.
+  // If cache is fallback/incomplete, try fresh retrieval before serving stale mock data.
   if (normalized.fallbackUsed || looksIncomplete || hasGenericDistrictLabel) {
     return refreshElectionData();
   }
