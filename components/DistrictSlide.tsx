@@ -499,9 +499,11 @@ export function DistrictSlide({
   language,
   onLanguageChange,
   onJumpToDistrict,
-  autoPlay,
-  onToggleAutoPlay
+  autoPlay: _autoPlay,
+  onToggleAutoPlay: _onToggleAutoPlay
 }: DistrictSlideProps): React.JSX.Element {
+  void _autoPlay;
+  void _onToggleAutoPlay;
   const [resultView, setResultView] = useState<ResultView>("dashboard");
   const [partyFilter, setPartyFilter] = useState<PartyFilter>("all");
   const [selectedInsight, setSelectedInsight] = useState<InsightKey | null>(null);
