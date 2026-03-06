@@ -125,7 +125,9 @@ export async function getElectionData(): Promise<ElectionDataset> {
   }
 
   if (age > SCRAPE_INTERVAL_MS) {
-    void refreshElectionData();
+    // In serverless runtimes, background refresh may not complete reliably.
+    // Refresh inline when cache is past interval so API responses can advance.
+    return refreshElectionData();
   }
 
   return normalized;
