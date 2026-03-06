@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 import { PartyConstituencyFilters } from "@/components/PartyConstituencyFilters";
-import { getRawCacheData, startElectionRefreshScheduler } from "@/lib/dataStore";
+import { getElectionData, getRawCacheData, startElectionRefreshScheduler } from "@/lib/dataStore";
 import { filterExcludedDistricts } from "@/lib/districtFilters";
 import { ConstituencyResult } from "@/lib/types";
 
@@ -20,21 +20,39 @@ interface PartyPageProps {
   params: Promise<{ partySlug: string }>;
 }
 
-export default async function PartyPage({ params }: PartyPageProps): Promise<React.JSX.Element> {
-  const { partySlug } = await params;
-  const dataset = await getRawCacheData();
-  const districts = filterExcludedDistricts(dataset.districts);
-
-  const allConstituencies: ConstituencyResult[] = districts.flatMap((district) => district.constituencies);
-
-  const leadingAndWonByParty: ConstituencyResult[] = allConstituencies.filter((constituency) =>
+function getPartyBuckets(
+  constituencies: ConstituencyResult[],
+  partySlug: string
+): {
+  leadingAndWonByParty: ConstituencyResult[];
+  secondByParty: ConstituencyResult[];
+} {
+  const leadingAndWonByParty: ConstituencyResult[] = constituencies.filter((constituency) =>
     constituency.leadingCandidate?.partyName
       ? partySlugify(constituency.leadingCandidate.partyName) === partySlug
       : false
   );
-  const secondByParty: ConstituencyResult[] = allConstituencies.filter((constituency) =>
+  const secondByParty: ConstituencyResult[] = constituencies.filter((constituency) =>
     constituency.runnerUp?.partyName ? partySlugify(constituency.runnerUp.partyName) === partySlug : false
   );
+
+  return { leadingAndWonByParty, secondByParty };
+}
+
+export default async function PartyPage({ params }: PartyPageProps): Promise<React.JSX.Element> {
+  const { partySlug } = await params;
+  const cachedDataset = await getRawCacheData();
+  const cachedDistricts = filterExcludedDistricts(cachedDataset.districts);
+  let allConstituencies: ConstituencyResult[] = cachedDistricts.flatMap((district) => district.constituencies);
+  let { leadingAndWonByParty, secondByParty } = getPartyBuckets(allConstituencies, partySlug);
+
+  // If cache is out of sync with the live dashboard list, retry with current dataset.
+  if (leadingAndWonByParty.length === 0 && secondByParty.length === 0) {
+    const liveDataset = await getElectionData();
+    const liveDistricts = filterExcludedDistricts(liveDataset.districts);
+    allConstituencies = liveDistricts.flatMap((district) => district.constituencies);
+    ({ leadingAndWonByParty, secondByParty } = getPartyBuckets(allConstituencies, partySlug));
+  }
 
   const partyName =
     leadingAndWonByParty[0]?.leadingCandidate?.partyName ??
