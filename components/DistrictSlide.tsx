@@ -509,6 +509,7 @@ export function DistrictSlide({
   const [selectedInsight, setSelectedInsight] = useState<InsightKey | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [districtSearchTerm, setDistrictSearchTerm] = useState("");
 
   const partySummaries = useMemo(() => buildPartySummaries(dataset), [dataset]);
   const provinceGroups = useMemo(() => buildProvinceGroups(districts), [districts]);
@@ -741,6 +742,13 @@ export function DistrictSlide({
         race.leadCandidate.toLowerCase().includes(normalizedSearch)
     );
   }, [closestRaces, normalizedSearch]);
+  const normalizedDistrictSearch = useMemo(() => districtSearchTerm.trim().toLowerCase(), [districtSearchTerm]);
+  const filteredDistricts = useMemo(() => {
+    if (!normalizedDistrictSearch) {
+      return districts;
+    }
+    return districts.filter((item) => item.districtName.toLowerCase().includes(normalizedDistrictSearch));
+  }, [districts, normalizedDistrictSearch]);
   const randomEligibleConstituencies = useMemo(
     () =>
       searchableConstituencies.filter(
@@ -1303,17 +1311,29 @@ export function DistrictSlide({
         {resultView === "constituency" && !normalizedSearch ? (
           <aside className="district-sidebar" aria-label="Manual district navigation">
             <div className="sidebar-title">{t(language, "districts")}</div>
+            <input
+              type="search"
+              className="district-search-input"
+              value={districtSearchTerm}
+              onChange={(event) => setDistrictSearchTerm(event.target.value)}
+              placeholder={t(language, "districtSearchPlaceholder")}
+              aria-label={t(language, "districtSearchPlaceholder")}
+            />
             <div className="district-list">
-              {districts.map((item) => (
-                <button
-                  key={item.districtSlug}
-                  type="button"
-                  className={`district-item ${item.districtSlug === district.districtSlug ? "active" : ""}`}
-                  onClick={() => onJumpToDistrict(item.districtSlug)}
-                >
-                  {item.districtName}
-                </button>
-              ))}
+              {filteredDistricts.length > 0 ? (
+                filteredDistricts.map((item) => (
+                  <button
+                    key={item.districtSlug}
+                    type="button"
+                    className={`district-item ${item.districtSlug === district.districtSlug ? "active" : ""}`}
+                    onClick={() => onJumpToDistrict(item.districtSlug)}
+                  >
+                    {item.districtName}
+                  </button>
+                ))
+              ) : (
+                <div className="district-empty">{t(language, "noDistrictsMatchSearch")}</div>
+              )}
             </div>
           </aside>
         ) : null}

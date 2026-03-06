@@ -396,6 +396,21 @@ a {
   letter-spacing: 0.04em;
 }
 
+.district-search-input {
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  background: rgba(6, 14, 28, 0.9);
+  color: var(--text);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.62rem;
+  font-size: 0.92rem;
+  margin-bottom: 0.55rem;
+}
+
+.district-search-input::placeholder {
+  color: var(--text-muted);
+}
+
 .district-list {
   flex: 1;
   min-height: 0;
@@ -420,6 +435,12 @@ a {
 .district-item.active {
   border-color: var(--accent);
   background: rgba(0, 56, 147, 0.24);
+}
+
+.district-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 0.35rem 0.2rem;
 }
 
 .grid {
@@ -1211,6 +1232,12 @@ a.province-party-row:hover {
 
   .sidebar-title {
     font-size: 1rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .district-search-input {
+    font-size: 1rem;
+    padding: 0.62rem 0.72rem;
     margin-bottom: 0.65rem;
   }
 
