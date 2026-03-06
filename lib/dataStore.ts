@@ -37,6 +37,15 @@ function withStale(dataset: ElectionDataset): ElectionDataset {
   return { ...dataset, stale };
 }
 
+function isReliableDataset(dataset: ElectionDataset): boolean {
+  if (dataset.fallbackUsed || dataset.districts.length < 70) {
+    return false;
+  }
+  return !dataset.districts.some(
+    (district) => district.districtName.trim().toLowerCase() === "federal parliament"
+  );
+}
+
 export async function refreshElectionData(): Promise<ElectionDataset> {
   if (inFlightRefresh) {
     return inFlightRefresh;
@@ -47,7 +56,7 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
       const scraped = await scrapeEkantipurElectionData();
       const normalized = withStale(scraped);
 
-      if (normalized.districts.length > 0) {
+      if (isReliableDataset(normalized)) {
         try {
           await writeCache(normalized);
         } catch (cacheWriteError) {
@@ -65,10 +74,13 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
       }
 
       const cached = await readCache();
-      if (cached) {
+      if (cached && isReliableDataset(cached)) {
         return {
           ...withStale(cached),
-          scrapeErrors: [...cached.scrapeErrors, "Error retrieving data. Using cached dataset."]
+          scrapeErrors: [
+            ...cached.scrapeErrors,
+            "Error retrieving data. Latest scrape was incomplete, using last successful dataset."
+          ]
         };
       }
 
@@ -79,7 +91,7 @@ export async function refreshElectionData(): Promise<ElectionDataset> {
       };
     } catch (error) {
       const cached = await readCache();
-      if (cached) {
+      if (cached && isReliableDataset(cached)) {
         return {
           ...withStale(cached),
           scrapeErrors: [
@@ -114,13 +126,9 @@ export async function getElectionData(): Promise<ElectionDataset> {
 
   const normalized = withStale(cached);
   const age = Date.now() - Date.parse(normalized.fetchedAtIso);
-  const looksIncomplete = normalized.districts.length < 70;
-  const hasGenericDistrictLabel = normalized.districts.some(
-    (district) => district.districtName.trim().toLowerCase() === "federal parliament"
-  );
 
   // If cache is fallback/incomplete, try fresh retrieval before serving stale mock data.
-  if (normalized.fallbackUsed || looksIncomplete || hasGenericDistrictLabel) {
+  if (!isReliableDataset(normalized)) {
     return refreshElectionData();
   }
 
