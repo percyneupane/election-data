@@ -77,7 +77,16 @@ export default function HomePage(): React.JSX.Element {
     () => ({ ...dataset, districts: filterExcludedDistricts(dataset.districts) }),
     [dataset]
   );
-  const districts = filteredDataset.districts;
+  const districts = useMemo(() => {
+    if (filteredDataset.districts.length > 0) {
+      return filteredDataset.districts;
+    }
+    if (dataset.districts.length > 0) {
+      return dataset.districts;
+    }
+    return fallbackResults.districts;
+  }, [dataset.districts, filteredDataset.districts]);
+  const displayDataset = useMemo(() => ({ ...filteredDataset, districts }), [districts, filteredDataset]);
 
   const currentDistrict = useMemo(() => {
     if (districts.length === 0) {
@@ -89,16 +98,17 @@ export default function HomePage(): React.JSX.Element {
   const fetchResults = useCallback(async () => {
     try {
       const response = await fetch("/api/results", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Failed to load dataset (${response.status})`);
-      }
-
       const nextData = (await response.json()) as ElectionDataset;
-      setDataset(nextData);
-      setError(null);
 
       if (nextData.districts.length > 0) {
+        setDataset(nextData);
         setCurrentIndex((prev) => Math.min(prev, nextData.districts.length - 1));
+      }
+
+      if (!response.ok) {
+        setError(`Data source temporarily unavailable (${response.status}). Showing last available data.`);
+      } else {
+        setError(null);
       }
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : "Unknown fetch error");
@@ -168,7 +178,7 @@ export default function HomePage(): React.JSX.Element {
     <div className="app-shell">
       <DistrictSlide
         district={currentDistrict}
-        dataset={filteredDataset}
+        dataset={displayDataset}
         elapsedMs={elapsedMs}
         totalMs={DISPLAY_MS}
         districts={districts}

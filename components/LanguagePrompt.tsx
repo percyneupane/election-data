@@ -11,7 +11,7 @@ export function LanguagePrompt({ language, onChoose }: LanguagePromptProps): Rea
   return (
     <div className="language-prompt-overlay" role="dialog" aria-modal="true" aria-label={t(language, "chooseLanguage")}>
       <div className="language-prompt-card">
-        <h2>{t(language, "chooseLanguage")}</h2>
+        {language === "en" ? <h2>{t(language, "chooseLanguage")}</h2> : null}
         <div className="language-prompt-actions">
           <button type="button" onClick={() => onChoose("en")}>
             {t(language, "english")}

@@ -1100,7 +1100,7 @@ a.province-party-row:hover {
 .ticker-track {
   display: inline-block;
   padding-left: 100%;
-  animation: ticker 36s linear infinite;
+  animation: ticker 72s linear infinite;
   color: #b6c8ea;
   font-size: 1.02rem;
 }
@@ -1205,7 +1205,22 @@ a.province-party-row:hover {
     height: auto;
     min-height: 0;
     border-radius: 0.9rem;
-    max-height: 9rem;
+    max-height: 16rem;
+    padding: 0.9rem;
+  }
+
+  .sidebar-title {
+    font-size: 1rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .district-list {
+    gap: 0.5rem;
+  }
+
+  .district-item {
+    font-size: 1.02rem;
+    padding: 0.72rem 0.82rem;
   }
 
   .controls {
@@ -1309,6 +1324,33 @@ a.province-party-row:hover {
   .random-constituency-row span:last-child {
     margin-left: 0;
     text-align: left;
+  }
+
+  .grid {
+    gap: 1.15rem;
+  }
+
+  .constituency-card {
+    padding: 1.05rem;
+    min-height: 11rem;
+    border-radius: 1rem;
+  }
+
+  .card-title {
+    font-size: 1.3rem;
+  }
+
+  .lead-row,
+  .runner-row {
+    font-size: 1.08rem;
+  }
+
+  .candidate-list {
+    gap: 0.55rem;
+  }
+
+  .candidate-row {
+    font-size: 1.04rem;
   }
 
 }
