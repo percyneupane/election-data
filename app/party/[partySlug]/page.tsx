@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 import { PartyConstituencyFilters } from "@/components/PartyConstituencyFilters";
-import { getElectionData, startElectionRefreshScheduler } from "@/lib/dataStore";
+import { getRawCacheData, startElectionRefreshScheduler } from "@/lib/dataStore";
 import { filterExcludedDistricts } from "@/lib/districtFilters";
 import { ConstituencyResult } from "@/lib/types";
 
@@ -22,7 +22,7 @@ interface PartyPageProps {
 
 export default async function PartyPage({ params }: PartyPageProps): Promise<React.JSX.Element> {
   const { partySlug } = await params;
-  const dataset = await getElectionData();
+  const dataset = await getRawCacheData();
   const districts = filterExcludedDistricts(dataset.districts);
 
   const allConstituencies: ConstituencyResult[] = districts.flatMap((district) => district.constituencies);

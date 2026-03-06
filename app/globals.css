@@ -1170,6 +1170,31 @@ a.province-party-row:hover {
     padding: 1.1rem;
   }
 
+  .top-row {
+    justify-content: flex-start;
+    padding-right: 3.8rem;
+  }
+
+  .title-block {
+    text-align: left;
+  }
+
+  .election-title {
+    white-space: normal;
+    line-height: 1.12;
+    font-size: clamp(1.35rem, 6.6vw, 2rem);
+    letter-spacing: 0.02em;
+  }
+
+  .subtitle {
+    font-size: 0.96rem;
+  }
+
+  .search-input {
+    padding: 0.78rem 0.86rem;
+    font-size: 1rem;
+  }
+
   .content-layout {
     grid-template-columns: 1fr;
   }
@@ -1187,20 +1212,81 @@ a.province-party-row:hover {
     justify-content: flex-start;
   }
 
+  .live-row {
+    align-items: stretch;
+  }
+
+  .live-controls {
+    width: 100%;
+    gap: 0.45rem;
+  }
+
+  .live-controls > button {
+    flex: 1 1 calc(50% - 0.25rem);
+    text-align: center;
+  }
+
+  .live-controls button,
+  .party-tab,
+  .party-back-link {
+    min-height: 2.3rem;
+    padding: 0.48rem 0.7rem;
+    font-size: 0.92rem;
+  }
+
+  .party-filter {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .party-filter select {
+    flex: 1;
+    min-height: 2.3rem;
+    font-size: 0.92rem;
+    padding: 0.44rem 0.62rem;
+  }
+
+  .grid,
+  .party-grid,
+  .geography-grid,
+  .insights-board,
+  .random-constituency-grid,
+  .province-party-page-grid,
+  .district-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .province-card {
+    padding: 0.9rem;
+  }
+
+  .party-summary-card h3 {
+    font-size: 1.06rem;
+  }
+
+  .party-stats {
+    font-size: 0.94rem;
+  }
+
+  .province-party-summary.wide-table {
+    overflow-x: auto;
+  }
+
   .province-party-summary.wide-table .province-party-head,
   .province-party-summary.wide-table .province-party-row {
-    grid-template-columns: minmax(140px, 1.6fr) repeat(3, minmax(70px, 0.8fr));
-    gap: 0.45rem;
-    font-size: 0.76rem;
+    grid-template-columns: minmax(180px, 1.7fr) repeat(3, minmax(88px, 0.8fr));
+    min-width: 540px;
+    gap: 0.5rem;
+    font-size: 0.8rem;
   }
 
   .dashboard-table .province-party-head,
   .dashboard-table .province-party-row {
-    font-size: 0.88rem;
+    font-size: 0.84rem;
   }
 
   .dashboard-table .province-party-head {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
   }
 
   .dashboard-province-grid {
@@ -1210,6 +1296,19 @@ a.province-party-row:hover {
   .dashboard-province-stats {
     grid-template-columns: 1fr;
     gap: 0.3rem;
+  }
+
+  .lead-row,
+  .runner-row,
+  .candidate-row,
+  .random-constituency-row {
+    flex-wrap: wrap;
+  }
+
+  .candidate-right,
+  .random-constituency-row span:last-child {
+    margin-left: 0;
+    text-align: left;
   }
 
 }

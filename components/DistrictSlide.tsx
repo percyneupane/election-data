@@ -1341,6 +1341,7 @@ export function DistrictSlide({
                 <Link
                   key={party.partyName}
                   href={`/party/${partySlugify(party.partyName)}`}
+                  prefetch={false}
                   className="party-summary-link"
                 >
                   <article className="party-summary-card party-summary-button">
@@ -1415,6 +1416,7 @@ export function DistrictSlide({
                   <Link
                     key={party.partyName}
                     href={`/party/${partySlugify(party.partyName)}`}
+                    prefetch={false}
                     className="province-party-row"
                   >
                     <span className="dashboard-party-cell">
