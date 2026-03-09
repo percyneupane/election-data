@@ -21,6 +21,7 @@ function initialsFromName(name: string): string {
 
 export function ConstituencyCard({ constituency }: ConstituencyCardProps): React.JSX.Element {
   const lead = constituency.leadingCandidate;
+  const isWonSeat = lead?.status === "won";
   const candidates = constituency.topCandidates ?? [];
   const numberFromName = constituency.constituencyName.match(/(\d+)\s*$/)?.[1];
   const numberFromSlug = constituency.constituencySlug.match(/-(\d+)$/)?.[1];
@@ -49,7 +50,11 @@ export function ConstituencyCard({ constituency }: ConstituencyCardProps): React
               {initialsFromName(lead.candidateName)}
             </span>
             <span>
-              <strong>{lead.candidateName}</strong> ({lead.partyName})
+              <strong>
+                {lead.candidateName}
+                {isWonSeat ? <span className="winner-check" aria-label="Won constituency"> ✓</span> : null}
+              </strong>{" "}
+              ({lead.partyName})
             </span>
           </span>
           <span className="candidate-right">

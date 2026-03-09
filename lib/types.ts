@@ -31,11 +31,26 @@ export interface DistrictResult {
   updatedAtIso: string;
 }
 
+export interface ProportionalPartyResult {
+  partyName: string;
+  partyLogoUrl?: string;
+  votes: number;
+  partyUrl?: string;
+}
+
+export interface ProportionalResults {
+  title: string;
+  sourceUrl: string;
+  updatedAtIso: string;
+  parties: ProportionalPartyResult[];
+}
+
 export interface ElectionDataset {
   source: string;
   sourceLabel: string;
   fetchedAtIso: string;
   districts: DistrictResult[];
+  proportionalResults?: ProportionalResults;
   scrapeErrors: string[];
   stale: boolean;
   fallbackUsed: boolean;

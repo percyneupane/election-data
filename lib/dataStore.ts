@@ -121,7 +121,25 @@ export async function getElectionData(): Promise<ElectionDataset> {
   const cached = await readCache();
 
   if (!cached) {
-    return refreshElectionData();
+    if (inFlightRefresh) {
+      return {
+        ...fallbackResults,
+        fetchedAtIso: new Date().toISOString(),
+        scrapeErrors: [
+          ...fallbackResults.scrapeErrors,
+          "Loading latest data in background. Showing instant fallback data."
+        ]
+      };
+    }
+    void refreshElectionData();
+    return {
+      ...fallbackResults,
+      fetchedAtIso: new Date().toISOString(),
+      scrapeErrors: [
+        ...fallbackResults.scrapeErrors,
+        "Loading latest data in background. Showing instant fallback data."
+      ]
+    };
   }
 
   const normalized = withStale(cached);

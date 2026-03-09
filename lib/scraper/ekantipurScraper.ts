@@ -5,7 +5,8 @@ import {
   ConstituencyResult,
   DistrictResult,
   ElectionDataset,
-  ElectionStatus
+  ElectionStatus,
+  ProportionalResults
 } from "@/lib/types";
 
 const BASE_URL = "https://election.ekantipur.com";
@@ -432,6 +433,51 @@ function parseCandidates($: ReturnType<typeof load>): CandidateResult[] {
   return compact;
 }
 
+function parseProportionalResults(homeHtml: string): ProportionalResults | undefined {
+  const $ = load(homeHtml);
+  const title = normalizeWhitespace($("#samanupatikTitle").first().text()).replace(/\s+/g, " ");
+  if (!title) {
+    return undefined;
+  }
+
+  const container = $("#samanupatikTitle").closest(".content-inside-wrap").find(".party-result");
+  const parties = container
+    .map((_, element) => {
+      const root = $(element);
+      const partyName = normalizeWhitespace(root.find(".vote-count p").first().text());
+      const votesText = normalizeWhitespace(root.find(".vote-count span").first().text());
+      const votes = parseNumber(votesText);
+      if (!partyName || votes <= 0) {
+        return null;
+      }
+
+      const partyLogoUrl = normalizeImageUrl(root.find("img").first().attr("src"));
+      const href = String(root.attr("href") ?? "").trim();
+      const partyUrl = href ? toAbsoluteUrl(href) : undefined;
+
+      return {
+        partyName,
+        partyLogoUrl,
+        votes,
+        partyUrl
+      };
+    })
+    .get()
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .sort((a, b) => b.votes - a.votes);
+
+  if (parties.length === 0) {
+    return undefined;
+  }
+
+  return {
+    title,
+    sourceUrl: HOME_URL,
+    updatedAtIso: new Date().toISOString(),
+    parties
+  };
+}
+
 function parseConstituencyPage(
   html: string,
   sourceUrl: string,
@@ -600,6 +646,7 @@ export async function scrapeEkantipurElectionData(): Promise<ElectionDataset> {
   const fetchedAtIso = new Date().toISOString();
 
   const homeHtml = await fetchHtml(HOME_URL);
+  const proportionalResults = parseProportionalResults(homeHtml);
   const { districtIndex, districtSlugs, constituencyUrls } = extractDistrictSlugsAndConstituencies(homeHtml);
   const districtIndexBySlug = new Map(districtIndex.map((entry) => [entry.districtSlug, entry]));
 
@@ -704,6 +751,7 @@ export async function scrapeEkantipurElectionData(): Promise<ElectionDataset> {
     sourceLabel: "Ekantipur Election",
     fetchedAtIso,
     districts,
+    proportionalResults,
     scrapeErrors,
     stale: false,
     fallbackUsed: false

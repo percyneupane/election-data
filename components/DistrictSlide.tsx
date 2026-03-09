@@ -20,7 +20,7 @@ interface DistrictSlideProps {
   onToggleAutoPlay: () => void;
 }
 
-type ResultView = "constituency" | "party" | "geography" | "dashboard";
+type ResultView = "constituency" | "party" | "geography" | "proportional" | "dashboard";
 type PartyFilter = "all" | "leading" | "won";
 type InsightKey = "seats" | "closest" | "highest" | "leader" | "competitive";
 type SearchSuggestionKind = "party" | "geography" | "candidate";
@@ -60,6 +60,13 @@ interface ProvinceDistrictStat {
   won: number;
   second: number;
   topParty?: string;
+}
+
+interface ProportionalPartyRow {
+  partyName: string;
+  partyLogoUrl?: string;
+  votes: number;
+  voteShare: number;
 }
 
 interface ConstituencyInsight {
@@ -490,6 +497,74 @@ function buildRaceRows(districts: DistrictResult[]): RaceRow[] {
     .sort((a, b) => a.margin - b.margin);
 }
 
+function buildProportionalRows(
+  districts: DistrictResult[],
+  importedNational?: { partyName: string; partyLogoUrl?: string; votes: number }[]
+): {
+  national: ProportionalPartyRow[];
+  byProvince: Record<string, ProportionalPartyRow[]>;
+} {
+  const national = new Map<string, { partyName: string; partyLogoUrl?: string; votes: number }>();
+  const provincial = new Map<string, Map<string, { partyName: string; partyLogoUrl?: string; votes: number }>>();
+
+  for (const district of districts) {
+    const province = district.province || "Unknown Province";
+    const provinceMap = provincial.get(province) ?? new Map<string, { partyName: string; partyLogoUrl?: string; votes: number }>();
+
+    for (const constituency of district.constituencies) {
+      for (const candidate of constituency.topCandidates) {
+        if (candidate.votes <= 0) {
+          continue;
+        }
+
+        const partyName = candidate.partyName || "Independent/Unknown";
+        const nationalRow = national.get(partyName) ?? { partyName, partyLogoUrl: candidate.partyLogoUrl, votes: 0 };
+        nationalRow.votes += candidate.votes;
+        if (!nationalRow.partyLogoUrl && candidate.partyLogoUrl) {
+          nationalRow.partyLogoUrl = candidate.partyLogoUrl;
+        }
+        national.set(partyName, nationalRow);
+
+        const provinceRow = provinceMap.get(partyName) ?? { partyName, partyLogoUrl: candidate.partyLogoUrl, votes: 0 };
+        provinceRow.votes += candidate.votes;
+        if (!provinceRow.partyLogoUrl && candidate.partyLogoUrl) {
+          provinceRow.partyLogoUrl = candidate.partyLogoUrl;
+        }
+        provinceMap.set(partyName, provinceRow);
+      }
+    }
+
+    provincial.set(province, provinceMap);
+  }
+
+  const toRows = (entries: { partyName: string; partyLogoUrl?: string; votes: number }[]): ProportionalPartyRow[] => {
+    const totalVotes = entries.reduce((sum, row) => sum + row.votes, 0);
+    return entries
+      .filter((row) => row.votes > 0)
+      .map((row) => ({
+        partyName: row.partyName,
+        partyLogoUrl: row.partyLogoUrl,
+        votes: row.votes,
+        voteShare: totalVotes > 0 ? (row.votes / totalVotes) * 100 : 0
+      }))
+      .sort((a, b) => b.votes - a.votes || a.partyName.localeCompare(b.partyName));
+  };
+
+  const nationalRows =
+    importedNational && importedNational.length > 0
+      ? toRows(importedNational)
+      : toRows([...national.values()]);
+  const provincialRows: Record<string, ProportionalPartyRow[]> = {};
+  for (const [province, partyMap] of provincial.entries()) {
+    provincialRows[province] = toRows([...partyMap.values()]);
+  }
+
+  return {
+    national: nationalRows,
+    byProvince: provincialRows
+  };
+}
+
 export function DistrictSlide({
   district,
   dataset,
@@ -513,6 +588,10 @@ export function DistrictSlide({
 
   const partySummaries = useMemo(() => buildPartySummaries(dataset), [dataset]);
   const provinceGroups = useMemo(() => buildProvinceGroups(districts), [districts]);
+  const proportionalData = useMemo(
+    () => buildProportionalRows(districts, dataset.proportionalResults?.parties),
+    [dataset.proportionalResults?.parties, districts]
+  );
   const raceRows = useMemo(() => buildRaceRows(districts), [districts]);
   const closestRaces = useMemo(() => raceRows.slice(0, 20), [raceRows]);
   const highestMarginRaces = useMemo(() => [...raceRows].sort((a, b) => b.margin - a.margin).slice(0, 20), [raceRows]);
@@ -730,6 +809,29 @@ export function DistrictSlide({
       );
     });
   }, [normalizedSearch, provinceGroups]);
+  const searchedNationalProportionalRows = useMemo(() => {
+    if (!normalizedSearch) {
+      return proportionalData.national.slice(0, 20);
+    }
+    return proportionalData.national
+      .filter((row) => row.partyName.toLowerCase().includes(normalizedSearch))
+      .slice(0, 20);
+  }, [normalizedSearch, proportionalData.national]);
+  const searchedProportionalProvinceGroups = useMemo(() => {
+    const groups = provinceGroups.map((group) => ({
+      province: group.province,
+      rows: (proportionalData.byProvince[group.province] ?? []).slice(0, 8)
+    }));
+    if (!normalizedSearch) {
+      return groups;
+    }
+    return groups
+      .map((group) => ({
+        province: group.province,
+        rows: group.rows.filter((row) => row.partyName.toLowerCase().includes(normalizedSearch))
+      }))
+      .filter((group) => group.province.toLowerCase().includes(normalizedSearch) || group.rows.length > 0);
+  }, [normalizedSearch, proportionalData.byProvince, provinceGroups]);
   const searchedClosestRaces = useMemo(() => {
     if (!normalizedSearch) {
       return closestRaces;
@@ -974,6 +1076,13 @@ export function DistrictSlide({
           >
             {t(language, "geographyView")}
           </button>
+          <button
+            type="button"
+            className={resultView === "proportional" ? "active" : ""}
+            onClick={() => setResultView("proportional")}
+          >
+            {t(language, "proportionalView")}
+          </button>
           {resultView === "party" ? (
             <label className="party-filter">
               {t(language, "filter")}:
@@ -1084,46 +1193,6 @@ export function DistrictSlide({
                   : t(language, "noDistrictComparisonYet")}
               </span>
             </button>
-          </section>
-
-          <section className="random-constituency-section" aria-label="Random constituency spotlight">
-            <h2>{t(language, "randomConstituencySpotlight")}</h2>
-            <div className="random-constituency-grid">
-              {randomConstituencies.map((constituency) => (
-                <Link
-                  key={`random-${constituency.constituencySlug}`}
-                  href={`/constituency/${constituency.constituencySlug}`}
-                  className="random-constituency-card"
-                >
-                  <div className="random-constituency-title">
-                    {constituency.districtName} - {constituency.constituencyName}
-                  </div>
-                  {(constituency.topCandidates ?? []).slice(0, 3).map((candidate, index) => (
-                    <div
-                      key={`${constituency.constituencySlug}-${candidate.candidateName}-${index}`}
-                      className="random-constituency-row"
-                    >
-                      <span>
-                        {index + 1}. {candidate.candidateName} ({candidate.partyName})
-                      </span>
-                      <span className="random-candidate-right">
-                        {candidate.partyLogoUrl ? (
-                          <img
-                            className="random-candidate-logo"
-                            src={candidate.partyLogoUrl}
-                            alt={`${candidate.partyName} logo`}
-                          />
-                        ) : null}
-                        <span>{candidate.votes.toLocaleString("en-US")}</span>
-                      </span>
-                    </div>
-                  ))}
-                  <div className="random-load-track" aria-hidden="true">
-                    <div className="random-load-fill" style={{ width: `${Math.round(randomCycleProgress * 100)}%` }} />
-                  </div>
-                </Link>
-              ))}
-            </div>
           </section>
 
           {selectedInsight === "seats" ? (
@@ -1302,6 +1371,48 @@ export function DistrictSlide({
               </div>
             </section>
           ) : null}
+
+          <section className="random-constituency-section" aria-label="Random constituency spotlight">
+            <h2>{t(language, "randomConstituencySpotlight")}</h2>
+            <div className="random-constituency-grid">
+              {randomConstituencies.map((constituency) => (
+                <Link
+                  key={`random-${constituency.constituencySlug}`}
+                  href={`/constituency/${constituency.constituencySlug}`}
+                  className="random-constituency-card"
+                >
+                  <div className="random-constituency-title">
+                    {constituency.districtName} - {constituency.constituencyName}
+                  </div>
+                  {(constituency.topCandidates ?? []).slice(0, 3).map((candidate, index) => (
+                    <div
+                      key={`${constituency.constituencySlug}-${candidate.candidateName}-${index}`}
+                      className="random-constituency-row"
+                    >
+                      <span>
+                        {index + 1}. {candidate.candidateName}
+                        {candidate.status === "won" ? <span className="winner-check" aria-label="Won constituency"> ✓</span> : null}{" "}
+                        ({candidate.partyName})
+                      </span>
+                      <span className="random-candidate-right">
+                        {candidate.partyLogoUrl ? (
+                          <img
+                            className="random-candidate-logo"
+                            src={candidate.partyLogoUrl}
+                            alt={`${candidate.partyName} logo`}
+                          />
+                        ) : null}
+                        <span>{candidate.votes.toLocaleString("en-US")}</span>
+                      </span>
+                    </div>
+                  ))}
+                  <div className="random-load-track" aria-hidden="true">
+                    <div className="random-load-fill" style={{ width: `${Math.round(randomCycleProgress * 100)}%` }} />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
         </>
       ) : null}
 
@@ -1414,6 +1525,35 @@ export function DistrictSlide({
                 </Link>
               </article>
             ))}
+          </section>
+        ) : resultView === "proportional" ? (
+          <section className="party-grid">
+            <article className="party-section">
+              <h2>{t(language, "proportionalStandings")}</h2>
+              <div className="province-party-summary wide-table dashboard-table">
+                <div className="province-party-head">
+                  <span>{t(language, "party")}</span>
+                  <span>{t(language, "votes")}</span>
+                  <span>{t(language, "voteShare")}</span>
+                </div>
+                {searchedNationalProportionalRows.length > 0 ? (
+                  searchedNationalProportionalRows.map((row) => (
+                    <div key={`pr-national-${row.partyName}`} className="province-party-row">
+                      <span className="dashboard-party-cell">
+                        {row.partyLogoUrl ? (
+                          <img className="dashboard-party-logo" src={row.partyLogoUrl} alt={`${row.partyName} logo`} />
+                        ) : null}
+                        <span>{row.partyName}</span>
+                      </span>
+                      <span>{row.votes.toLocaleString("en-US")}</span>
+                      <span>{row.voteShare.toFixed(2)}%</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="province-party-empty">{t(language, "noProportionalData")}</div>
+                )}
+              </div>
+            </article>
           </section>
         ) : (
           <section className="party-grid">

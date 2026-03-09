@@ -993,6 +993,11 @@ a.province-party-row:hover {
   color: var(--text);
 }
 
+.winner-check {
+  color: #22c55e;
+  font-weight: 900;
+}
+
 .runner-row {
   color: var(--text-muted);
 }

@@ -4,6 +4,25 @@ export const fallbackResults: ElectionDataset = {
   source: "https://election.ekantipur.com/?lng=eng",
   sourceLabel: "Ekantipur Election (Fallback Mock Data)",
   fetchedAtIso: new Date("2026-03-05T12:00:00.000Z").toISOString(),
+  proportionalResults: {
+    title: "Federal Proportional Results 2082",
+    sourceUrl: "https://election.ekantipur.com/?lng=eng",
+    updatedAtIso: new Date("2026-03-05T12:00:00.000Z").toISOString(),
+    parties: [
+      {
+        partyName: "Rastriya Swatantra Party",
+        votes: 3146844
+      },
+      {
+        partyName: "Nepali Congress",
+        votes: 1067203
+      },
+      {
+        partyName: "CPN-UML",
+        votes: 908349
+      }
+    ]
+  },
   stale: true,
   fallbackUsed: true,
   scrapeErrors: ["Live source unavailable. Showing fallback development data."],
