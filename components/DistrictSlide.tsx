@@ -817,21 +817,6 @@ export function DistrictSlide({
       .filter((row) => row.partyName.toLowerCase().includes(normalizedSearch))
       .slice(0, 20);
   }, [normalizedSearch, proportionalData.national]);
-  const searchedProportionalProvinceGroups = useMemo(() => {
-    const groups = provinceGroups.map((group) => ({
-      province: group.province,
-      rows: (proportionalData.byProvince[group.province] ?? []).slice(0, 8)
-    }));
-    if (!normalizedSearch) {
-      return groups;
-    }
-    return groups
-      .map((group) => ({
-        province: group.province,
-        rows: group.rows.filter((row) => row.partyName.toLowerCase().includes(normalizedSearch))
-      }))
-      .filter((group) => group.province.toLowerCase().includes(normalizedSearch) || group.rows.length > 0);
-  }, [normalizedSearch, proportionalData.byProvince, provinceGroups]);
   const searchedClosestRaces = useMemo(() => {
     if (!normalizedSearch) {
       return closestRaces;
