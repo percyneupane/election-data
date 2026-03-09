@@ -9,9 +9,20 @@ const CACHE_FILE = path.join(CACHE_DIR, "results-cache.json");
 
 const SCRAPE_INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS ?? "120000");
 const STALE_AFTER_MS = Number(process.env.STALE_AFTER_MS ?? "300000");
+const FIRST_LOAD_WAIT_MS = Number(process.env.FIRST_LOAD_WAIT_MS ?? "7000");
+const ENABLE_INSTANT_FIRST_LOAD_FALLBACK =
+  process.env.ENABLE_INSTANT_FIRST_LOAD_FALLBACK === "1" && !process.env.VERCEL;
 
 let inFlightRefresh: Promise<ElectionDataset> | null = null;
 let schedulerStarted = false;
+
+function instantFallbackWithMessage(message: string): ElectionDataset {
+  return {
+    ...fallbackResults,
+    fetchedAtIso: new Date().toISOString(),
+    scrapeErrors: [...fallbackResults.scrapeErrors, message]
+  };
+}
 
 async function ensureCacheDir(): Promise<void> {
   await mkdir(CACHE_DIR, { recursive: true });
@@ -121,25 +132,21 @@ export async function getElectionData(): Promise<ElectionDataset> {
   const cached = await readCache();
 
   if (!cached) {
-    if (inFlightRefresh) {
-      return {
-        ...fallbackResults,
-        fetchedAtIso: new Date().toISOString(),
-        scrapeErrors: [
-          ...fallbackResults.scrapeErrors,
-          "Loading latest data in background. Showing instant fallback data."
-        ]
-      };
+    if (!ENABLE_INSTANT_FIRST_LOAD_FALLBACK) {
+      return refreshElectionData();
     }
-    void refreshElectionData();
-    return {
-      ...fallbackResults,
-      fetchedAtIso: new Date().toISOString(),
-      scrapeErrors: [
-        ...fallbackResults.scrapeErrors,
-        "Loading latest data in background. Showing instant fallback data."
-      ]
-    };
+
+    const refreshPromise = inFlightRefresh ?? refreshElectionData();
+    const timeoutPromise = new Promise<ElectionDataset>((resolve) => {
+      setTimeout(() => {
+        resolve(
+          instantFallbackWithMessage(
+            "Live source is taking longer than expected. Showing fallback data while refresh continues."
+          )
+        );
+      }, FIRST_LOAD_WAIT_MS);
+    });
+    return Promise.race([refreshPromise, timeoutPromise]);
   }
 
   const normalized = withStale(cached);
