@@ -11,7 +11,7 @@ const SCRAPE_INTERVAL_MS = Number(process.env.SCRAPE_INTERVAL_MS ?? "120000");
 const STALE_AFTER_MS = Number(process.env.STALE_AFTER_MS ?? "300000");
 const FIRST_LOAD_WAIT_MS = Number(process.env.FIRST_LOAD_WAIT_MS ?? "2500");
 const ENABLE_INSTANT_FIRST_LOAD_FALLBACK =
-  process.env.ENABLE_INSTANT_FIRST_LOAD_FALLBACK !== "0";
+  process.env.ENABLE_INSTANT_FIRST_LOAD_FALLBACK === "1";
 
 let inFlightRefresh: Promise<ElectionDataset> | null = null;
 let schedulerStarted = false;
@@ -132,7 +132,9 @@ export async function getElectionData(): Promise<ElectionDataset> {
   const cached = await readCache();
 
   if (!cached) {
-    if (!ENABLE_INSTANT_FIRST_LOAD_FALLBACK || FIRST_LOAD_WAIT_MS <= 0) {
+    // In serverless environments, returning early can terminate the in-flight scrape.
+    // Default to blocking refresh so live data can be fetched and cached reliably.
+    if (!ENABLE_INSTANT_FIRST_LOAD_FALLBACK || FIRST_LOAD_WAIT_MS <= 0 || process.env.VERCEL) {
       return refreshElectionData();
     }
 

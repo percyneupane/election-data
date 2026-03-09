@@ -43,6 +43,19 @@ interface DistrictIndexEntry {
   constituencyCount: number;
 }
 
+interface EmbeddedCandidateRow {
+  name?: string;
+  party_name?: string;
+  vote_count?: number | string;
+  is_win?: number | boolean;
+  is_lead?: number | boolean;
+  pradesh_name?: string;
+  district_name?: string;
+  district_slug?: string;
+  flag?: string;
+  region_num?: number | string;
+}
+
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -433,6 +446,105 @@ function parseCandidates($: ReturnType<typeof load>): CandidateResult[] {
   return compact;
 }
 
+function parseEmbeddedConstituencyData(
+  homeHtml: string,
+  districtIndexBySlug: Map<string, DistrictIndexEntry>
+): ConstituencyResult[] {
+  const match = homeHtml.match(/const\s+oData\s*=\s*(\{[\s\S]*?\});/);
+  if (!match?.[1]) {
+    return [];
+  }
+
+  let parsed: Record<string, EmbeddedCandidateRow[]>;
+  try {
+    parsed = JSON.parse(match[1]) as Record<string, EmbeddedCandidateRow[]>;
+  } catch {
+    return [];
+  }
+
+  const results: ConstituencyResult[] = [];
+
+  for (const [constituencySlug, rows] of Object.entries(parsed)) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      continue;
+    }
+
+    const districtSlug = districtFromConstituencySlug(constituencySlug);
+    const districtMeta = districtIndexBySlug.get(districtSlug);
+    const first = rows[0];
+    if (!first) {
+      continue;
+    }
+
+    const province =
+      normalizeWhitespace(first.pradesh_name ?? "") ||
+      districtMeta?.province ||
+      provinceFromDistrictSlug.get(districtSlug) ||
+      "Unknown Province";
+    const districtName =
+      normalizeWhitespace(first.district_name ?? "") ||
+      districtMeta?.districtName ||
+      districtNameFromSlug(districtSlug);
+
+    const normalizedCandidates = rows
+      .map((row): CandidateResult | null => {
+        const candidateName = normalizeWhitespace(row.name ?? "");
+        if (!candidateName) {
+          return null;
+        }
+        const votesRaw = typeof row.vote_count === "number" ? row.vote_count : parseNumber(String(row.vote_count ?? ""));
+        const votes = Number.isFinite(votesRaw) ? Math.max(Number(votesRaw), 0) : 0;
+        const status: ElectionStatus = row.is_win
+          ? "won"
+          : row.is_lead
+            ? "leading"
+            : "trailing";
+
+        return {
+          candidateName,
+          partyName: normalizeWhitespace(row.party_name ?? "") || "Independent/Unknown",
+          partyLogoUrl: normalizeImageUrl(row.flag),
+          votes,
+          status
+        };
+      })
+      .filter((item): item is CandidateResult => Boolean(item))
+      .sort((a, b) => b.votes - a.votes);
+
+    if (normalizedCandidates.length === 0) {
+      continue;
+    }
+
+    const lead = normalizedCandidates[0];
+    const runnerUp = normalizedCandidates[1];
+    const leadMargin = runnerUp ? Math.max(lead.votes - runnerUp.votes, 0) : undefined;
+    const constituencyNumber = String(first.region_num ?? "").trim() || constituencySlug.match(/-(\d+)$/)?.[1] || "";
+    const constituencyName = constituencyNumber ? `${districtName} - ${constituencyNumber}` : constituencySlug;
+    const provinceCode =
+      districtMeta?.provinceCode || (Object.entries(PROVINCE_LABELS).find(([, value]) => value === province)?.[0] ?? "");
+    const sourceUrl =
+      provinceCode && constituencyNumber
+        ? `${BASE_URL}/pradesh-${provinceCode}/district-${districtSlug}/constituency-${constituencyNumber}`
+        : `${BASE_URL}/constituency/${constituencySlug}`;
+
+    results.push({
+      constituencySlug,
+      constituencyName,
+      districtSlug,
+      districtName,
+      province,
+      topCandidates: normalizedCandidates,
+      leadingCandidate: lead,
+      runnerUp,
+      leadMargin,
+      updatedAtIso: new Date().toISOString(),
+      sourceUrl
+    });
+  }
+
+  return results;
+}
+
 function parseProportionalResults(homeHtml: string): ProportionalResults | undefined {
   const $ = load(homeHtml);
   const title = normalizeWhitespace($("#samanupatikTitle").first().text()).replace(/\s+/g, " ");
@@ -649,6 +761,21 @@ export async function scrapeEkantipurElectionData(): Promise<ElectionDataset> {
   const proportionalResults = parseProportionalResults(homeHtml);
   const { districtIndex, districtSlugs, constituencyUrls } = extractDistrictSlugsAndConstituencies(homeHtml);
   const districtIndexBySlug = new Map(districtIndex.map((entry) => [entry.districtSlug, entry]));
+  const embeddedConstituencies = parseEmbeddedConstituencyData(homeHtml, districtIndexBySlug);
+
+  if (embeddedConstituencies.length >= 120) {
+    const districts = groupDistricts(embeddedConstituencies, [...districtIndexBySlug.values()]);
+    return {
+      source: HOME_URL,
+      sourceLabel: "Ekantipur Election",
+      fetchedAtIso,
+      districts,
+      proportionalResults,
+      scrapeErrors,
+      stale: false,
+      fallbackUsed: false
+    };
+  }
 
   const districtSlugList = [...districtSlugs].slice(0, MAX_DISTRICT_PAGES);
 
