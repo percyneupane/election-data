@@ -1,6 +1,9 @@
 import { DistrictResult } from "@/lib/types";
 
-const EXCLUDED_DISTRICT_KEYS = new Set(["rautahat"]);
+const EXCLUDED_DISTRICT_KEYS = new Set([
+  "ilam",
+  "rautahat",
+]);
 
 function normalizeDistrictKey(value: string): string {
   return value.toLowerCase().replace(/[^a-z]/g, "");
